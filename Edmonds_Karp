@@ -1,0 +1,377 @@
+#include<iostream>
+#include <fstream>
+#include<cstdlib>
+#include<queue>
+#include<stack>
+#define MAX_SIZE 100;
+using namespace std;
+
+//************Global variables declared*******************
+int visited[100];
+int parent[100];
+bool* isVisited;
+bool* visitComplete;
+int** adj_mat;
+int** flow;
+int** control;
+int** residual;
+int** list;
+int minFlow=0;
+int minV;
+//*******************************************************
+class Queue
+{
+  int front,rear,ele;
+	int que[100];
+	public:
+	Queue()
+	{
+		front=-1;
+		rear=-1;
+	}
+	void insert_queue(int element)
+	{
+		if((rear-front)==99)
+		{
+			cout<<" Max size reached ";
+			//exit(0);
+		}
+		else
+		{
+			que[rear]=element;
+			rear++;
+		}
+	}
+	int delete_queue()
+	{
+		if(front==rear)
+			cout<<" Queue Empty ";
+		else
+		{		
+			ele=que[front];
+			front++;
+		}
+		return ele;
+	}
+	bool isEmpty()
+	{
+		if(front==rear)
+			return true;
+		else
+			return false;
+	}
+
+};
+/*************** Class responsible for implementation Breadth First Search*****************************/
+//Uses the adjacency list representaion to compute the bfs more efficiently
+//Class used for determining the path from source to destination for determining the augment path  
+/*****************************************************************************************************/
+class bfs
+{
+	
+	public:	
+	bool build_bfs(int source,int destination,int row)
+	{
+		for(int count=0;count<20;count++)
+			visited[count]=-1;
+			queue<int> q;
+			q.push(source);			
+			visited[source]=-2;
+			while(!q.empty())
+			{
+				int del=q.front();
+				q.pop();
+				for(int i=0;i<list[del-1][0];i++)
+				{
+					int index=list[del-1][i+1];
+					if(adj_mat[del-1][index]-flow[del-1][index]>0 && visited[index+1]==-1)
+					{
+							visited[index+1]=del;
+							if(index+1!=destination)
+							{
+								q.push(index+1);
+							}							
+							else
+							{	
+							visited[destination]=del;								
+							return true;
+							}
+						
+					}
+				}
+			}
+		
+		return false;	
+		
+	}
+};
+/*************** Class responsible for implementation Depth First Search*****************************/
+//Class used for determining the path from the final residual matrix to determine the Min-Cut  
+/*****************************************************************************************************/
+
+class dfs
+{
+	
+	public:	
+	bool build_dfs(int source,int destination,int row)
+	{
+		for(int count=0;count<20;count++)
+			visited[count]=-1;
+		isVisited=new bool[row];
+		visitComplete=new bool[row];
+		for(int v=0;v<row;v++)
+		{
+			isVisited[v]=false;
+			visitComplete[v]=false;		
+		}		
+		isVisited[source]=true;
+		visitComplete[source]=true;
+		stack<int> q;
+		q.push(source);			
+		visited[source]=-2;
+		while(!q.empty())
+		{
+			int del=q.top();
+			q.pop();
+			for(int i=0;i<row;i++)
+			{
+				if(residual[del-1][i]>0 && visited[i+1]==-1)
+				{
+					visited[i+1]=del;
+					isVisited[i+1]=true;
+					if(i+1!=destination)
+					{
+						q.push(i+1);
+					}							
+					else
+					{	
+						visited[destination]=del;								
+						return true;
+					}
+				}
+			}
+		}
+		return false;	
+	}
+};
+
+
+
+void updateMatrix(int source,int destination,int row,int* visited,int minVal)
+{
+	int dt=destination;
+	while(true)
+	{
+				
+		int visit=visited[dt];		
+		flow[visit-1][dt-1]+=minVal;
+		dt=visited[dt];
+		if(dt==source)
+			break;
+	
+	}
+	cout<<endl;
+	/*cout<<"flow matrix after is"<<endl;	
+	for(int i=0;i<row;i++)
+	{
+		for(int j=0;j<row;j++)
+			cout<<flow[i][j]<<" ";
+		cout<<endl;
+	}*/
+	dt=destination;		
+	while(true)		
+	{
+		int visit=visited[dt];
+		residual[visit-1][dt-1]=residual[visit-1][dt-1]-minVal;
+		residual[dt-1][visit-1]+=minVal;
+		dt=visited[dt];
+		if(dt==source)
+			break;
+	}
+	/*cout<<"residual matrix after update is"<<endl;	
+	for(int i=0;i<row;i++)
+	{
+		for(int j=0;j<row;j++)
+			cout<<residual[i][j]<<" ";
+		cout<<endl;
+	}*/
+}
+void updateflow(int source,int destination,int row)
+{
+	stack<int> s,s1;
+	int d=destination,count=0;
+	while(true)
+	{
+		s.push(d);
+		s1.push(d);
+		if(d==source)
+		{
+			break;		
+		}		
+			d=visited[d];				
+	}
+		while(!s.empty())
+		{
+			int st=s.top();
+			cout<<st;
+			s.pop();
+
+		}
+		
+		/*cout<<"Residual matrix is "<<endl;
+		for(int i=0;i<row;i++)
+		{
+			for(int j=0;j<row;j++)
+			{
+				cout<<residual[i][j] << " ";
+			}
+			cout<<"\n";
+		}*/
+		
+	 	int p=visited[destination];
+		int dt=destination;	
+		int temp;
+		minV=adj_mat[p-1][destination-1]-flow[p-1][destination-1];
+		while(true)
+		{
+			int visit=visited[dt];
+			temp=adj_mat[visit-1][dt-1]-flow[visit-1][dt-1];	
+			minV=min(minV,temp);
+			dt=visited[dt];
+			if(dt==source)
+				break;
+		}
+		minFlow+=minV;	
+		
+	}	
+int main()
+{
+	int row,edges,val1,val2,weight,source,destination,iteration;		
+	//Reading the input from file called "input"	
+	std::ifstream infile("input");
+	infile>>row>>edges;
+	//Initialisation of matrices
+	adj_mat=new int*[row];
+	flow=new int*[row];
+	residual=new int*[row];
+	list=new int*[row];
+
+	for(int index=0;index<=row;index++)
+	{
+		adj_mat[index]=new int[index];	
+		flow[index]=new int[index];
+		residual[index]=new int[index];	
+		list[index]=new int[index];
+	}	
+	if(row!=NULL && edges!=NULL)
+	{
+		infile>> source>> destination>> iteration;		
+		//cout<<"Source is "<< source<< " Destination is "<<destination <<" With iteration number "<<iteration;
+		cout<<"\n";
+		while(infile >>	val1 >> val2 >> weight)
+		{
+			for(int i=0;i<row;i++)
+			{
+				for(int j=0;j<row;j++)
+				{
+					adj_mat[val1-1][val2-1]=weight;
+					residual[val1-1][val2-1]=weight;
+					flow[i][j]=0;
+				}
+			}
+		}
+	}
+	/*for(int i=0;i<row;i++)
+	{
+		for(int j=0;j<row;j++)
+		{
+			cout<<adj_mat[i][j] << " ";
+		}
+		cout<<"\n";
+	}*/
+	int count=0;
+	
+	for(int i=0;i<row;i++)
+	{
+		for(int j=0;j<row;j++)
+		{
+			if(adj_mat[i][j]!=0)
+			{
+				count++;
+			}
+		}
+		list[i]=new int[count+1];
+		list[i][0]=count;
+		count=0;	
+	}
+	for(int i=0;i<row;i++)
+	{
+		int k=0;		
+		for(int j=0;j<row;j++)
+		{
+			if(adj_mat[i][j]!=0)
+				list[i][++k]=j;			
+				
+		}
+	}
+	/*cout<<"list is "<<endl;
+	for(int i=0;i<row;i++)
+	{
+		for(int j=0;j<row;j++)
+				
+			cout<<list[i][j]<<" ";
+		cout<<endl;	
+	}*/
+	int handler;
+	
+	bfs b;
+	int loop_variable,counter=0;
+	while(true)
+	{	 
+		loop_variable=b.build_bfs(source,destination,row);
+		//cout<<"Loop Variable value "<<loop_variable;
+		if(loop_variable)
+		{
+			updateflow(source,destination,row);
+			updateMatrix(source,destination,row,visited,minV);
+		}
+		else 
+			break;
+	}
+	cout<<"Flow value ="<<minFlow;
+	cout<<endl;
+	cout<<"The max-flow is ";
+	cout<<endl;
+	for(int a=0;a<row;a++)
+	{
+		for(int b=0;b<row;b++)
+		{
+			if(flow[a][b]>0)
+			{
+				cout<<a+1<<" "<<b+1<<" "<<flow[a][b];
+				cout<<endl;
+			}
+		}
+	}
+	cout<<endl;
+	cout<<"Min-Cut Capacity = "<<minFlow<<endl;
+	dfs d;
+	d.build_dfs(source,destination,row);
+	cout<<"Min-Cut is "<<endl;
+	for(int v=0;v<row;v++)
+	{
+		if(isVisited[v]==true)
+		{
+			cout<<v<<" ";	
+			visitComplete[v]=true;		
+		}		
+	}
+	cout<<endl;
+	for(int v=0;v<row;v++)
+	{
+		if(visitComplete[v+1]==false)
+			cout<<v+1<<" ";
+	}
+
+return 0;	
+}
